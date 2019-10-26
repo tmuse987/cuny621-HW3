@@ -17,6 +17,8 @@ library(tidyr)
 library(MASS)
 library(psych)
 library(kableExtra)
+library(dplyr)
+library(faraway)
 crimeTrain <- read.csv("crime-training-data_modified.csv")
 crimeEval <- read.csv("crime-evaluation-data_modified.csv")
 ```
@@ -113,8 +115,77 @@ ggplot(gather(crimeTrain[,-1]), aes(value)) +
 ```{r}
 m1<-glm(target~.,data=crimeTrain,family="binomial"(link="logit"))
 summary(m1)
+
+```
+Use Stepwise function to find the best parameters
+
+```{r}
+m2 <- step(m1)
+summary(m2)
 ```
 
+This reduces the predictors used in the model to these:
+     zn
+     nox
+     age
+     dis
+     rad
+     tax
+     ptRation
+     medv
+
+It Removes these predictors:
+     indus
+     chas
+     rm#
+
+The AIC improves marginally (215 vs 218) but we also benefit by having a simpler model less prone to overfitting.
+
+Also, tThe predictors in the model now are all signficant (under 0.05 pr level) and all but one under .01 or very significant. Which is much improved over the prior model
+
+
+
+
+###Create a binned diagnostic plot of residuals vs prediction
+There are definite patterns here, which bear investigating.
+
+```{r}
+crimeMut <- mutate(crimeTrain, Residuals = residuals(m2), linPred = predict(m2))
+grpCrime <- group_by(crimeMut, cut(linPred, breaks=unique(quantile(linPred, (0:25/26)))))
+
+diagCrime <- summarise(grpCrime, Residuals = mean(Residuals), linPred = mean(linPred))
+plot(Residuals ~ linPred, data = diagCrime, xlab="Linear Predictor")
+```
+
+###Plot leverages.
+
+```{r}
+halfnorm(hatvalues(m2))
+```
+
+We don't see any strong outliers with the leverage plot.  The points identified (14,18) are essentially in the plot of the line formed, so they are not likely pulling our model in any direction.
+
+###Plot Goodness of fit
+```{r}
+linPred <- predict(m2)
+
+
+crimeMut <- mutate(crimeTrain, predProb = predict(m2, type = "response"))
+grpCrime <- group_by(crimeMut, cut(linPred, breaks = unique(quantile(linPred, (0:25)/26))))
+
+#hosmer-lemeshow stat
+hlDf <- summarise(grpCrime, y= sum(target), pPred=mean(predProb), count = n())
+
+hlDf <- mutate(hlDf, se.fit=sqrt(pPred * (1-(pPred)/count)))
+
+
+ggplot(hlDf,aes(x=pPred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit)) +
+    geom_point()+geom_linerange(color=grey(0.75))+geom_abline(intercept=0,slope=1) +
+    xlab("Predicted Probability") +
+    ylab("Observed Proportion")
+```
+
+We see that our predictors fall close to the line.  (Note to group, need do adjust the min max line)
 								   
 			
 ##BoxCox Model
