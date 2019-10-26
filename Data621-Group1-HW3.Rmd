@@ -80,6 +80,7 @@ sapply(crimeTrain, function(x) round(sum(is.na(x))/nrow(crimeTrain)*100,1))
 library(naniar)
 vis_miss(crimeTrain)
 #gg_miss_upset(crimeTrain)
+head(crimeTrain)
 ```
 
 
@@ -109,6 +110,10 @@ ggplot(gather(crimeTrain[,-1]), aes(value)) +
 
 # BUILD MODELS
 
+```{r}
+m1<-glm(target~.,data=crimeTrain,family="binomial"(link="logit"))
+summary(m1)
+```
 
 								   
 			
