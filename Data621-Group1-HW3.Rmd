@@ -108,8 +108,20 @@ ggplot(gather(crimeTrain[,-1]), aes(value)) +
     facet_wrap(~key, scales = "free_x")
 ```
 
+# DATA PREPARATION
 
-## Correlation Plot
+## Fix missing values
+
+No data was found missing.
+
+## Mathematical transformations.
+
+**Box Cox**
+
+## Variable Creation / Removal 
+
+To determine how we can combine variables to create new one we start by looking at a correlation plot. 
+
 ```{r echo = FALSE, message=FALSE}
 cor(crimeTrain$target, crimeTrain[-c(1)], use="na.or.complete")
 
@@ -119,21 +131,28 @@ corrplot::corrplot(cor(crimeTrain[,1:13]), method='square')
 
 ```
 
-
-# DATA PREPARATION
-
-## Variable Creation / Removal 
-
-
-
 # BUILD MODELS
+
+###General regression
+
+We start by building a model with all the predictors in the dataset.
 
 ```{r}
 m1<-glm(target~.,data=crimeTrain,family="binomial"(link="logit"))
 summary(m1)
-
 ```
-Use Stepwise function to find the best parameters
+
+The Summary of this model shows several predictor are not relevant. We build a second model without these predictors.
+
+```{r}
+m1.1<-glm(target~nox+age+dis+rad+tax+ptratio+medv,data=crimeTrain,family="binomial"(link="logit"))
+summary(m1.1)
+```
+
+
+###AIC Step Method
+
+Another way of selecting which predictors to use in the model is by calculating the AIC of the model. This metric is similar to the adjusted R-square of a model in that it penalizes models with more predictors over simpler model with few predictors. We use Stepwise function in r to find the lowest AIC with different predictors.
 
 ```{r}
 m2 <- step(m1)
@@ -155,14 +174,170 @@ It Removes these predictors:
      chas
      rm#
 
-The AIC improves marginally (215 vs 218) but we also benefit by having a simpler model less prone to overfitting.
+The AIC improves marginally from 218.05 (our original general model) to 215.32, but we also benefit by having a simpler model less prone to overfitting.
 
 Also, tThe predictors in the model now are all signficant (under 0.05 pr level) and all but one under .01 or very significant. Which is much improved over the prior model
 
+###BIC Method
+
+To determine the number of predictors and hich predictors to be used we will use the Bayesian Information Criterion (BIC).
+```{r}
+regfit.full <- regsubsets(factor(target) ~ ., data=crimeTrain)
+par(mfrow = c(1,2))
+reg.summary <- summary(regfit.full)
+plot(reg.summary$bic, xlab="Number of Predictors", ylab="BIC", type="l", main="Subset Selection Using BIC")
+BIC_num <- which.min(reg.summary$bic) 
+points(BIC_num, reg.summary$bic[BIC_num], col="red", cex=2, pch=20)
+plot(regfit.full, scale="bic", main="Predictors vs. BIC")
+par(mfrow = c(1,1))
+```
+The plot on the right shows that the number of predictors with the lowest BIC are `nox` , `age`, `rad`, and `medv`. We will use those predictors to build the next model
+```{r}
+m3 <- glm(target ~ nox + age + rad + medv, family=binomial, data = crimeTrain)
+
+crimeTrain$predicted_m3<- predict(m3, crimeTrain, type='response')
+crimeTrain$target_m3$target <- ifelse(crimeTrain$predicted_m3>0.5, 1, 0)
+pander::pander(summary(m3))
+```
+
+# SELECT MODELS
+## Compare Model Statistics
+
+###Model 1 - General Model
+
+####Complete general model
+
+**ROC Curve**
+```{r}
+targethat<-predict(m1,type="response")
+
+g<-roc(target~targethat,data=crimeTrain)
+plot(g)
+```
+
+**Confusion Matrix**
+```{r}
+targethat[targethat<0.5]<-0
+targethat[targethat>=0.5]<-1
+table(targethat,crimeTrain$target)
+```
+
+**Create a binned diagnostic plot of residuals vs prediction**
+There are definite patterns here, which bear investigating.
+
+```{r}
+crimeMut <- mutate(crimeTrain, Residuals = residuals(m1), linPred = predict(m1))
+grpCrime <- group_by(crimeMut, cut(linPred, breaks=unique(quantile(linPred, (0:25/26)))))
+
+diagCrime <- summarise(grpCrime, Residuals = mean(Residuals), linPred = mean(linPred))
+plot(Residuals ~ linPred, data = diagCrime, xlab="Linear Predictor")
+```
+
+**Plot leverages.**
+
+```{r}
+halfnorm(hatvalues(m1))
+```
+
+We don't see any strong outliers with the leverage plot.  The points identified (14,18) are essentially in the plot of the line formed, so they are not likely pulling our model in any direction.
+
+**Plot Goodness of fit**
+```{r}
+linPred <- predict(m1)
 
 
+crimeMut <- mutate(crimeTrain, predProb = predict(m1, type = "response"))
+grpCrime <- group_by(crimeMut, cut(linPred, breaks = unique(quantile(linPred, (0:25)/26))))
 
-###Create a binned diagnostic plot of residuals vs prediction
+#hosmer-lemeshow stat
+hlDf <- summarise(grpCrime, y= sum(target), pPred=mean(predProb), count = n())
+
+hlDf <- mutate(hlDf, se.fit=sqrt(pPred * (1-(pPred)/count)))
+
+
+ggplot(hlDf,aes(x=pPred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit)) +
+    geom_point()+geom_linerange(color=grey(0.75))+geom_abline(intercept=0,slope=1) +
+    xlab("Predicted Probability") +
+    ylab("Observed Proportion")
+```
+
+We see that our predictors fall close to the line.  (Note to group, need do adjust the min max line)
+
+####Reduced general model
+
+**ROC Curve**
+```{r}
+targethat<-predict(m1.1,type="response")
+
+g<-roc(target~targethat,data=crimeTrain)
+plot(g)
+```
+
+**Confusion Matrix**
+```{r}
+targethat[targethat<0.5]<-0
+targethat[targethat>=0.5]<-1
+table(targethat,crimeTrain$target)
+```
+
+**Create a binned diagnostic plot of residuals vs prediction**
+There are definite patterns here, which bear investigating.
+
+```{r}
+crimeMut <- mutate(crimeTrain, Residuals = residuals(m1.1), linPred = predict(m1.1))
+grpCrime <- group_by(crimeMut, cut(linPred, breaks=unique(quantile(linPred, (0:25/26)))))
+
+diagCrime <- summarise(grpCrime, Residuals = mean(Residuals), linPred = mean(linPred))
+plot(Residuals ~ linPred, data = diagCrime, xlab="Linear Predictor")
+```
+
+**Plot leverages.**
+
+```{r}
+halfnorm(hatvalues(m1.1))
+```
+
+We don't see any strong outliers with the leverage plot.  The points identified (14,18) are essentially in the plot of the line formed, so they are not likely pulling our model in any direction.
+
+**Plot Goodness of fit**
+```{r}
+linPred <- predict(m1.1)
+
+
+crimeMut <- mutate(crimeTrain, predProb = predict(m1.1, type = "response"))
+grpCrime <- group_by(crimeMut, cut(linPred, breaks = unique(quantile(linPred, (0:25)/26))))
+
+#hosmer-lemeshow stat
+hlDf <- summarise(grpCrime, y= sum(target), pPred=mean(predProb), count = n())
+
+hlDf <- mutate(hlDf, se.fit=sqrt(pPred * (1-(pPred)/count)))
+
+
+ggplot(hlDf,aes(x=pPred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit)) +
+    geom_point()+geom_linerange(color=grey(0.75))+geom_abline(intercept=0,slope=1) +
+    xlab("Predicted Probability") +
+    ylab("Observed Proportion")
+```
+
+We see that our predictors fall close to the line.  (Note to group, need do adjust the min max line)
+
+###Model 2 - AIC Model
+
+**ROC Curve**
+```{r}
+targethat<-predict(m2,type="response")
+g<-roc(target~targethat,data=crimeTrain)
+plot(g)
+```
+
+**Confusion Matrix**
+```{r}
+targethat[targethat<0.5]<-0
+targethat[targethat>=0.5]<-1
+table(targethat,crimeTrain$target)
+```
+
+**Create a binned diagnostic plot of residuals vs prediction**
 There are definite patterns here, which bear investigating.
 
 ```{r}
@@ -173,7 +348,7 @@ diagCrime <- summarise(grpCrime, Residuals = mean(Residuals), linPred = mean(lin
 plot(Residuals ~ linPred, data = diagCrime, xlab="Linear Predictor")
 ```
 
-###Plot leverages.
+**Plot leverages.**
 
 ```{r}
 halfnorm(hatvalues(m2))
@@ -181,7 +356,7 @@ halfnorm(hatvalues(m2))
 
 We don't see any strong outliers with the leverage plot.  The points identified (14,18) are essentially in the plot of the line formed, so they are not likely pulling our model in any direction.
 
-###Plot Goodness of fit
+**Plot Goodness of fit**
 ```{r}
 linPred <- predict(m2)
 
@@ -203,62 +378,9 @@ ggplot(hlDf,aes(x=pPred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit)) 
 
 We see that our predictors fall close to the line.  (Note to group, need do adjust the min max line)
 
-To determine the number of predictors and hich predictors to be used we will use the Bayesian Information Criterion (BIC).
-```{r}
-regfit.full <- regsubsets(factor(target) ~ ., data=crimeTrain)
-par(mfrow = c(1,2))
-reg.summary <- summary(regfit.full)
-plot(reg.summary$bic, xlab="Number of Predictors", ylab="BIC", type="l", main="Subset Selection Using BIC")
-BIC_num <- which.min(reg.summary$bic) 
-points(BIC_num, reg.summary$bic[BIC_num], col="red", cex=2, pch=20)
-plot(regfit.full, scale="bic", main="Predictors vs. BIC")
-par(mfrow = c(1,1))
-```
-The plot on the left shows that the number of predictors with the lowest BIC are `nox` , `age`, `rad`, and `medv`. We will use those predictors to build the next model
-```{r}
-m3 <- glm(target ~ nox + age + rad + medv, family=binomial, data = crimeTrain)
-
-crimeTrain$predicted_m3<- predict(m3, crimeTrain, type='response')
-crimeTrain$target_m3$target <- ifelse(crimeTrain$predicted_m3>0.5, 1, 0)
-pander::pander(summary(m3))
-```
-
-								   
-			
-##BoxCox Model
-			   
 
 
-# SELECT MODELS
-## Compare Model Statistics
-
-###Model 1
-```{r}
-targethat<-predict(m1,type="response")
-
-g<-roc(target~targethat,data=crimeTrain)
-plot(g)
-
-targethat[targethat<0.5]<-0
-targethat[targethat>=0.5]<-1
-table(targethat,crimeTrain$target)
-
-
-```
-
-###Model 2
-```{r}
-targethat<-predict(m2,type="response")
-
-g<-roc(target~targethat,data=crimeTrain)
-plot(g)
-
-targethat[targethat<0.5]<-0
-targethat[targethat>=0.5]<-1
-table(targethat,crimeTrain$target)
-```
-
-###Model 3
+###Model 3 - BIC Model
 ```{r}
 targethat<-predict(m3,type="response")
 
@@ -269,6 +391,48 @@ targethat[targethat<0.5]<-0
 targethat[targethat>=0.5]<-1
 table(targethat,crimeTrain$target)
 ```
+
+**Create a binned diagnostic plot of residuals vs prediction**
+There are definite patterns here, which bear investigating.
+
+```{r}
+crimeMut <- mutate(crimeTrain, Residuals = residuals(m3), linPred = predict(m3))
+grpCrime <- group_by(crimeMut, cut(linPred, breaks=unique(quantile(linPred, (0:25/26)))))
+
+diagCrime <- summarise(grpCrime, Residuals = mean(Residuals), linPred = mean(linPred))
+plot(Residuals ~ linPred, data = diagCrime, xlab="Linear Predictor")
+```
+
+**Plot leverages.**
+
+```{r}
+halfnorm(hatvalues(m3))
+```
+
+We don't see any strong outliers with the leverage plot.  The points identified (14,18) are essentially in the plot of the line formed, so they are not likely pulling our model in any direction.
+
+**Plot Goodness of fit**
+```{r}
+linPred <- predict(m3)
+
+
+crimeMut <- mutate(crimeTrain, predProb = predict(m3, type = "response"))
+grpCrime <- group_by(crimeMut, cut(linPred, breaks = unique(quantile(linPred, (0:25)/26))))
+
+#hosmer-lemeshow stat
+hlDf <- summarise(grpCrime, y= sum(target), pPred=mean(predProb), count = n())
+
+hlDf <- mutate(hlDf, se.fit=sqrt(pPred * (1-(pPred)/count)))
+
+
+ggplot(hlDf,aes(x=pPred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit)) +
+    geom_point()+geom_linerange(color=grey(0.75))+geom_abline(intercept=0,slope=1) +
+    xlab("Predicted Probability") +
+    ylab("Observed Proportion")
+```
+
+We see that our predictors fall close to the line.  (Note to group, need do adjust the min max line)
+
 
 ## Pick the best regression model
 
