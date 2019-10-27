@@ -19,6 +19,12 @@ library(psych)
 library(kableExtra)
 library(dplyr)
 library(faraway)
+library(gridExtra)
+library(reshape2)
+library(leaps)
+library(pROC)
+library(caret)
+
 crimeTrain <- read.csv("crime-training-data_modified.csv")
 crimeEval <- read.csv("crime-evaluation-data_modified.csv")
 ```
@@ -102,6 +108,14 @@ ggplot(gather(crimeTrain[,-1]), aes(value)) +
 
 
 ## Correlation Plot
+```{r echo = FALSE, message=FALSE}
+cor(crimeTrain$target, crimeTrain[-c(1)], use="na.or.complete")
+
+```
+```{r echo = FALSE, message=FALSE}
+corrplot::corrplot(cor(crimeTrain[,1:13]), method='square')
+
+```
 
 
 # DATA PREPARATION
@@ -186,6 +200,27 @@ ggplot(hlDf,aes(x=pPred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit)) 
 ```
 
 We see that our predictors fall close to the line.  (Note to group, need do adjust the min max line)
+
+To determine the number of predictors and hich predictors to be used we will use the Bayesian Information Criterion (BIC).
+```{r}
+regfit.full <- regsubsets(factor(target) ~ ., data=crimeTrain)
+par(mfrow = c(1,2))
+reg.summary <- summary(regfit.full)
+plot(reg.summary$bic, xlab="Number of Predictors", ylab="BIC", type="l", main="Subset Selection Using BIC")
+BIC_num <- which.min(reg.summary$bic) 
+points(BIC_num, reg.summary$bic[BIC_num], col="red", cex=2, pch=20)
+plot(regfit.full, scale="bic", main="Predictors vs. BIC")
+par(mfrow = c(1,1))
+```
+The plot on the left shows that the number of predictors with the lowest BIC are `nox` , `age`, `rad`, and `medv`. We will use those predictors to build the next model
+```{r}
+m3 <- glm(target ~ nox + age + rad + medv, family=binomial, data = crimeTrain)
+
+crimeTrain$predicted_m3<- predict(m3, crimeTrain, type='response')
+crimeTrain$target_m3$target <- ifelse(crimeTrain$predicted_m3>0.5, 1, 0)
+pander::pander(summary(m3))
+```
+
 								   
 			
 ##BoxCox Model
