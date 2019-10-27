@@ -117,7 +117,10 @@ No data was found missing.
 ## Mathematical transformations.
 
 **Box Cox**
-
+```{r, warning=FALSE, echo=FALSE}
+crimeTrain_bct <- apply(crimeTrain, 2, BoxCoxTrans)
+crimeTrain_bct
+```
 
 ## Variable Creation / Removal 
 
