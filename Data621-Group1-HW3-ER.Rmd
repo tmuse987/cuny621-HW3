@@ -3,12 +3,7 @@ title: 'Data 621 Homework 3: Boston Crime Rates'
 author: "Tommy Jenkins, Violeta Stoyanova, Todd Weigel, Peter Kowalchuk, Eleanor R-Secoquian"
 date: "October, 2019"
 output:
-  word_document:
-    toc: yes
-    toc_depth: '2'
-  pdf_document:
-    toc: yes
-    toc_depth: '2'
+  pdf_document: default
   html_document:
     number_sections: yes
     theme: paper
@@ -16,6 +11,7 @@ always_allow_html: yes
 ---
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
+require(knitr)
 library(ggplot2)
 library(tidyr)
 library(MASS)
@@ -46,14 +42,14 @@ The objective is to build a binary logistic regression model on the training dat
 # DATA EXPLORATION
 
 ## Data Summary 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
 crimed1 <- describe(crimeTrain, na.rm = F)
 crimed1$na_count <- sapply(crimeTrain, function(y) sum(length(which(is.na(y)))))
 crimed1$na_count_perc <- sapply(crimeTrain, function(x) round(sum(is.na(x))/nrow(crimeTrain)*100,1))
 ```
 
 
-```{r echo=FALSE,message=FALSE,warning=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
 colsTrain<-ncol(crimeTrain)
 colsEval<-ncol(crimeEval)
 missingCol<-colnames(crimeTrain)[!(colnames(crimeTrain) %in% colnames(crimeEval))]
