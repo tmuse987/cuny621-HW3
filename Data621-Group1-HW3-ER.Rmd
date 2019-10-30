@@ -1,6 +1,6 @@
 ---
 title: 'Data 621 Homework 3: Boston Crime Rates'
-author: "Tommy Jenkins, Violeta Stoyanova, Todd Weigel, Peter Kowalchuk, Eleanor R-Secoquian"
+author: "Tommy Jenkins, Violeta Stoyanova, Todd Weigel, Peter Kowalchuk, Eleanor R-Secoquian, Anthony Pagan"
 date: "October, 2019"
 output:
   pdf_document: default
@@ -458,7 +458,7 @@ From the above we see that Model 4, found by using the step forward selection me
 
 ## Conclusion
 
-The final model selected with best AIC and BIC was model 4, which includes a Box Cox tranformation. The best logistic regression model without transformation was model 2, with the lowest combination of AIC and BIC. Both model 4 and model 2 were used to predict outcomes using the evaluation data set.
+The final model selected with best AIC and BIC was model 4, which includes a Box Cox transformation. The best logistic regression model without transformation was model 2, with the lowest combination of AIC and BIC. Both model 4 and model 2 were used to predict outcomes using the evaluation data set.
 
 **Model 4 Evaluation**
 
@@ -485,7 +485,7 @@ targethat
 write.csv(p,"predicted_eval_values_m2_binary.csv")
 ```
 
-All models were computed using the entire training dataset. Becouse models were selected using AIC and BIC metrics rather than evaluating them using cross validation, the dataset was not initially split in training and validate. SImilar results are obtained performing this split, as can be seen by reproducing model 2 with only 80% of the training set.
+All models were computed using the entire training dataset. Because models were selected using AIC and BIC metrics rather than evaluating them using cross validation, the dataset was not initially split in training and validate. Similar results are obtained performing this split, as can be seen by reproducing model 2 with only 80% of the training set.
 
 ```{r echo = FALSE, message=FALSE}
 set.seed(42)
