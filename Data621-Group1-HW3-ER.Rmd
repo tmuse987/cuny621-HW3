@@ -3,12 +3,16 @@ title: 'Data 621 Homework 3: Boston Crime Rates'
 author: "Tommy Jenkins, Violeta Stoyanova, Todd Weigel, Peter Kowalchuk, Eleanor R-Secoquian"
 date: "October, 2019"
 output:
-  html_document:
-    number_sections: yes
-    theme: paper
+  word_document:
+    toc: yes
+    toc_depth: '2'
   pdf_document:
     toc: yes
     toc_depth: '2'
+  html_document:
+    number_sections: yes
+    theme: paper
+always_allow_html: yes
 ---
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}

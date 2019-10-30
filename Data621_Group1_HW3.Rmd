@@ -3,6 +3,9 @@ title: 'Data 621 Homework 3: Boston Crime Rates'
 author: "Tommy Jenkins, Violeta Stoyanova, Todd Weigel, Peter Kowalchuk, Eleanor R-Secoquian"
 date: "October, 2019"
 output:
+  word_document:
+    toc: yes
+    toc_depth: '2'
   pdf_document:
     toc: yes
     toc_depth: '2'
@@ -12,6 +15,7 @@ output:
 ---
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
+
 require(knitr)
 library(ggplot2)
 library(tidyr)
@@ -370,6 +374,7 @@ halfnorm(hatvalues(m2))
 We don't see any strong outliers with the leverage plot.  The points identified (14,18) are essentially in the plot of the line formed, so they are not likely pulling our model in any direction.
 
 **Plot Goodness of fit**
+
 ```{r echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
 linPred <- predict(m2)
 crimeMut <- mutate(crimeTrain, predProb = predict(m2, type = "response"))
@@ -388,6 +393,7 @@ We see that our predictors fall close to the line.  (Note to group, need do adju
 
 
 ### Model 3 - BIC Model
+
 ```{r echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
 targethat<-predict(m3,type="response")
 g<-roc(target~targethat,data=crimeTrain)
@@ -419,6 +425,7 @@ halfnorm(hatvalues(m3))
 We don't see any strong outliers with the leverage plot.  The points identified (14,18) are essentially in the plot of the line formed, so they are not likely pulling our model in any direction.
 
 **Plot Goodness of fit**
+
 ```{r echo=FALSE, warning=FALSE, message=FALSE, results="asis"}
 linPred <- predict(m3)
 crimeMut <- mutate(crimeTrain, predProb = predict(m3, type = "response"))
