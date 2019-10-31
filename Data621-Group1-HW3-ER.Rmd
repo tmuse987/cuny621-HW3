@@ -138,9 +138,9 @@ corrplot::corrplot(cor(crimeTrain[,1:13]), order = "hclust", method='square', ad
 
 # BUILD MODELS
 
-### General regression
+### General regression  Model 1
 
-We start by building a model with all the predictors in the dataset.
+We start by building a model with all the predictors in the dataset.  The below is referred to as Model 1 later in the document.
 
 ```{r echo=FALSE,message=FALSE,warning=FALSE}
 m1<-glm(target~.,data=crimeTrain,family="binomial"(link="logit"))
@@ -148,7 +148,6 @@ summary(m1)
 ```
 
 The Summary of this model shows several predictor are not relevant. We build a second model without these predictors.  
- 
 ```{r echo=FALSE,message=FALSE,warning=FALSE}
 m1.1<-glm(target~nox+age+dis+rad+tax+ptratio+medv,data=crimeTrain,family="binomial"(link="logit"))
 summary(m1.1)
@@ -159,9 +158,11 @@ summary(m1.1)
 
 The new model has a slightly higher AIC which would tells us the first model is slightly less complex. For the 2 data sets p-value = 1 - pchisq(deviance, degrees of freedom) are 1. The Null hypothesis is still supported.
 
-### AIC Step Method
+### AIC Step Method Model 2
 
 Another way of selecting which predictors to use in the model is by calculating the AIC of the model. This metric is similar to the adjusted R-square of a model in that it penalizes models with more predictors over simpler model with few predictors. We use Stepwise function in r to find the lowest AIC with different predictors.
+
+
 
 ```{r echo=FALSE,message=FALSE,warning=FALSE}
 m2 <- step(m1)
@@ -187,7 +188,7 @@ The AIC improves marginally from 218.05 (our original general model) to 215.32, 
 
 Also, the predictors in the model now are all signficant (under 0.05 pr level) and all but one under .01 or very significant. Which is much improved over the prior model
 
-### BIC Method
+### BIC Method  Model 3
 
 To determine the number of predictors and which predictors to be used we will use the Bayesian Information Criterion (BIC).
 
@@ -211,7 +212,7 @@ crimeTrain$target_m3$target <- ifelse(crimeTrain$predicted_m3>0.5, 1, 0)
 pander::pander(summary(m3))
 ```
 
-### Forward Selection Method using some BoxCox transformed independent variables: 
+### Forward Selection Method using some BoxCox transformed independent variables.  Model 4
 
 ```{r}
 m4 <- step(glm(target~1, data=crimeTrain), direction = "forward", scope = ~zn + I(log(indus)) + I(sqrt(chas)) + I(nox^-1) + I(log(rm)) + I(age^2) + I(dis^-.5) + rad + I(tax^-1) + I(ptratio^2) + lstat + medv) 
@@ -265,6 +266,7 @@ halfnorm(hatvalues(m1))
 We don't see any strong outliers with the leverage plot.  The points identified (14,18) are essentially in the plot of the line formed, so they are not likely pulling our model in any direction.
 
 **Plot Goodness of fit**
+
 ```{r echo=FALSE,message=FALSE,warning=FALSE}
 linPred <- predict(m1)
 crimeMut <- mutate(crimeTrain, predProb = predict(m1, type = "response"))
@@ -278,7 +280,7 @@ ggplot(hlDf,aes(x=pPred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit)) 
     ylab("Observed Proportion")
 ```
 
-We see that our predictors fall close to the line.  (Note to group, need do adjust the min max line)
+We see that our predictors fall close to the line. 
 
 #### Reduced general model
 
@@ -314,9 +316,10 @@ plot(Residuals ~ linPred, data = diagCrime, xlab="Linear Predictor")
 halfnorm(hatvalues(m1.1))
 ```
 
-We don't see any strong outliers with the leverage plot.  The points identified (14,18) are essentially in the plot of the line formed, so they are not likely pulling our model in any direction.
+We don't see any strong outliers with the leverage plot.  The points identified (14,295) are essentially in the plot of the line formed, so they are not likely pulling our model in any direction.
 
 **Plot Goodness of fit**
+
 ```{r echo=FALSE,message=FALSE,warning=FALSE}
 linPred <- predict(m1.1)
 crimeMut <- mutate(crimeTrain, predProb = predict(m1.1, type = "response"))
@@ -330,7 +333,7 @@ ggplot(hlDf,aes(x=pPred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit)) 
     ylab("Observed Proportion")
 ```
 
-We see that our predictors fall close to the line.  (Note to group, need do adjust the min max line)
+We see that our predictors fall close to the line.  
 
 ### Model 2 - AIC Model
 
@@ -352,6 +355,7 @@ table(targethat,crimeTrain$target)
 
 **Create a binned diagnostic plot of residuals vs prediction**
 
+There seemes to be a slight pattern in the residuals for this model, which may indicate the model isn't as good as we could get, but it appears more random then the model 1 plot.
 
 ```{r echo=FALSE,message=FALSE,warning=FALSE}
 crimeMut <- mutate(crimeTrain, Residuals = residuals(m2), linPred = predict(m2))
@@ -369,6 +373,7 @@ halfnorm(hatvalues(m2))
 We don't see any strong outliers with the leverage plot.  The points identified (14,18) are essentially in the plot of the line formed, so they are not likely pulling our model in any direction.
 
 **Plot Goodness of fit**
+
 ```{r echo=FALSE,message=FALSE,warning=FALSE}
 linPred <- predict(m2)
 crimeMut <- mutate(crimeTrain, predProb = predict(m2, type = "response"))
@@ -382,7 +387,7 @@ ggplot(hlDf,aes(x=pPred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit)) 
     ylab("Observed Proportion")
 ```
 
-We see that our predictors fall close to the line.  (Note to group, need do adjust the min max line)
+We see that our predictors fall close to the line.  
 
 
 
@@ -400,6 +405,8 @@ The AUC value of `r round(g$auc,2)`, although high for this model it has the low
 
 **Create a binned diagnostic plot of residuals vs prediction**
 
+We see that the residuals plotted to the predictor seem less random than in Model 2.
+
 
 ```{r echo=FALSE,message=FALSE,warning=FALSE}
 crimeMut <- mutate(crimeTrain, Residuals = residuals(m3), linPred = predict(m3))
@@ -415,9 +422,10 @@ plot(Residuals ~ linPred, data = diagCrime, xlab="Linear Predictor")
 halfnorm(hatvalues(m3))
 ```
 
-We don't see any strong outliers with the leverage plot.  The points identified (14,18) are essentially in the plot of the line formed, so they are not likely pulling our model in any direction.
+We don't see any strong outliers with the leverage plot.  The points identified (304,382) are essentially in the plot of the line formed, so they are not likely pulling our model in any direction.
 
 **Plot Goodness of fit**
+
 ```{r echo=FALSE,message=FALSE,warning=FALSE}
 linPred <- predict(m3)
 crimeMut <- mutate(crimeTrain, predProb = predict(m3, type = "response"))
@@ -446,7 +454,6 @@ m3AIC <- AIC(m3)
 m3BIC <- BIC(m3)
 m4AIC <- AIC(m4)
 m4BIC <- BIC(m4)
-summary(m1)
 ```
 | Metric    | Model 1     | Model 2      | Model 3    | Model 4    |
 | --------- | ----------- | -----------  | ---------- | ---------- |
@@ -757,7 +764,7 @@ ggplot(hlDf,aes(x=pPred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit)) 
     ylab("Observed Proportion")
 
 
-We see that our predictors fall close to the line.  (Note to group, need do adjust the min max line)
+We see that our predictors fall close to the line.  
 
 Reduced general model
 
@@ -809,7 +816,7 @@ ggplot(hlDf,aes(x=pPred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit)) 
     ylab("Observed Proportion")
 
 
-We see that our predictors fall close to the line.  (Note to group, need do adjust the min max line)
+We see that our predictors fall close to the line. 
 
 Model 2 - AIC Model
 
@@ -861,7 +868,7 @@ ggplot(hlDf,aes(x=pPred,y=y/count,ymin=y/count-2*se.fit,ymax=y/count+2*se.fit)) 
     ylab("Observed Proportion")
 
 
-We see that our predictors fall close to the line.  (Note to group, need do adjust the min max line)
+We see that our predictors fall close to the line.  
 
 
 
