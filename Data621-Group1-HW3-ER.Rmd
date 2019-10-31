@@ -461,18 +461,20 @@ m4BIC <- BIC(m4)
 | BIC       | `r m1BIC`   | `r m2BIC`    | `r m3BIC`  | `r m4BIC`  |
 
 
-From the above we see that Model 4, found by using the step forward selection method to do  stepwise reduction of models achieves both the lowest AIC and the lowest BIC.  Considering that it returns the best by both of those measures, this is the model we will use against future data (e.g., an evaulation dataset.)
+From the above we see that Model 4, found by using the step forward selection method to do  stepwise reduction of models achieves both the lowest AIC and the lowest BIC. Model 2 returns the next lowest metrics and is the second best model from that evaluation criteria.
 
 ## Conclusion
 
 The final model selected with best AIC and BIC was model 4, which includes a Box Cox transformation. The best logistic regression model without transformation was model 2, with the lowest combination of AIC and BIC. Both model 4 and model 2 were used to predict outcomes using the evaluation data set.
+
+When we did predictions with Model 4 we have found some results that were confusing, as predictions should range between 0 and 1, and that models predictions ranged somewhat above and below that.  Because of that we decided there is an error somewhere in that model causing erroneous results and we will therefore use model 2 as our model selection and hence use that to perform  our predictions.
 
 **Model 4 Evaluation**
 
 ```{r echo = FALSE, message=FALSE}
 targethat<-predict(m4,crimeEval, type = "response")
 targethat
-write.csv(p,"predicted_eval_values_m4.csv")
+#write.csv(p,"predicted_eval_values_m4.csv")
 ```
 
 **Model 2 Evaluation**
@@ -480,7 +482,7 @@ write.csv(p,"predicted_eval_values_m4.csv")
 ```{r echo = FALSE, message=FALSE}
 targethat<-predict(m2,crimeEval, type = "response")
 targethat
-write.csv(p,"predicted_eval_values_m2.csv")
+#write.csv(p,"predicted_eval_values_m2.csv")
 ```
 
 For model 2 we can also use a threshold of 0.5, or 50%, and compute the binary prediction.
